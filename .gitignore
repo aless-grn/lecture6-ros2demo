@@ -28,6 +28,9 @@ Thumbs.db
 # Gazebo
 .gazebo/
 
+# Auto-generated GPU config (per-machine)
+.devcontainer/docker-compose.override.yml
+
 # Temporary
 *.tmp
 *.bak

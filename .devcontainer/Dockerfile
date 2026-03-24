@@ -1,13 +1,17 @@
-FROM osrf/ros:humble-desktop-full
+# Multi-arch base: works natively on amd64 (Intel/AMD) AND arm64 (Apple Silicon)
+FROM ros:humble-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=humble
 
-# Update and upgrade (with time sync handling)
-RUN apt-get update -o Acquire::Check-Valid-Until=false && apt-get upgrade -y
+# TARGETARCH is set automatically by Docker BuildKit (amd64 or arm64)
+ARG TARGETARCH
 
-# Install essential build tools
-RUN apt-get install -y \
+# ---- Core packages (work on ALL architectures) ----
+RUN apt-get update -o Acquire::Check-Valid-Until=false && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    # Build tools
     python3-pip \
     python3-colcon-common-extensions \
     python3-rosdep \
@@ -17,68 +21,63 @@ RUN apt-get install -y \
     git vim wget curl \
     bash-completion sudo \
     software-properties-common \
-    gnupg lsb-release
-
-# Install locales
-RUN apt-get install -y locales && \
-    locale-gen en_US en_US.UTF-8 && \
-    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
-ENV LANG=en_US.UTF-8
-
-# Install Gazebo Classic (already included in ros-humble-desktop-full)
-# Additional Gazebo Classic tools
-RUN apt-get update && apt-get install -y \
-    gazebo \
-    ros-${ROS_DISTRO}-gazebo-ros-pkgs \
-    ros-${ROS_DISTRO}-gazebo-ros
-
-# Install Navigation2 and SLAM dependencies
-RUN apt-get install -y \
+    gnupg lsb-release \
+    locales \
+    # Desktop GUI tools
+    ros-${ROS_DISTRO}-rviz2 \
+    ros-${ROS_DISTRO}-rqt \
+    ros-${ROS_DISTRO}-rqt-common-plugins \
+    # Navigation2 and SLAM
     ros-${ROS_DISTRO}-navigation2 \
     ros-${ROS_DISTRO}-nav2-bringup \
     ros-${ROS_DISTRO}-cartographer \
     ros-${ROS_DISTRO}-cartographer-ros \
-    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
-
-# Install ROS2 development tools
-RUN apt-get install -y \
-    ros-${ROS_DISTRO}-rviz2 \
-    ros-${ROS_DISTRO}-rqt \
-    ros-${ROS_DISTRO}-rqt-common-plugins \
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    # Robot description and transforms
     ros-${ROS_DISTRO}-robot-state-publisher \
     ros-${ROS_DISTRO}-joint-state-publisher \
     ros-${ROS_DISTRO}-joint-state-publisher-gui \
     ros-${ROS_DISTRO}-xacro \
     ros-${ROS_DISTRO}-tf2-ros \
-    ros-${ROS_DISTRO}-tf2-tools
-
-# Install teleop tools
-RUN apt-get install -y \
+    ros-${ROS_DISTRO}-tf2-tools \
+    # Teleop
     ros-${ROS_DISTRO}-teleop-twist-keyboard \
-    ros-${ROS_DISTRO}-teleop-twist-joy
-
-# Install ros2_control packages
-RUN apt-get install -y \
+    ros-${ROS_DISTRO}-teleop-twist-joy \
+    # ros2_control (may not be available on all platforms)
     ros-${ROS_DISTRO}-controller-manager \
     ros-${ROS_DISTRO}-ros2-control \
-    ros-${ROS_DISTRO}-ros2-controllers || true
-
-# Install OpenGL and Mesa utilities for GUI
-RUN apt-get install -y \
+    ros-${ROS_DISTRO}-ros2-controllers \
+    # OpenGL / GPU support (harmless on systems without GPU)
     mesa-utils \
     libglx-mesa0 \
     libgl1-mesa-dri \
     mesa-vulkan-drivers \
-    x11-apps
+    x11-apps \
+    libglvnd0 libgl1 libglx0 libegl1 \
+    && locale-gen en_US en_US.UTF-8 \
+    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir \
-    setuptools numpy transforms3d
+# ---- Gazebo Classic 11 (amd64 ONLY — no arm64 packages exist) ----
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+        gazebo \
+        ros-${ROS_DISTRO}-gazebo-ros-pkgs \
+        ros-${ROS_DISTRO}-gazebo-ros \
+        && rm -rf /var/lib/apt/lists/* \
+        && echo "GAZEBO_AVAILABLE=true" > /etc/gazebo-status; \
+    else \
+        echo "INFO: Gazebo Classic 11 is not available for arm64 (Apple Silicon)." && \
+        echo "      Simulation features will be unavailable. RViz, Nav2, SLAM still work." && \
+        echo "GAZEBO_AVAILABLE=false" > /etc/gazebo-status; \
+    fi
 
-# Clean apt cache
-RUN rm -rf /var/lib/apt/lists/*
+ENV LANG=en_US.UTF-8
 
-# Create workspace directory (will be accessible by any user)
+# Python dependencies
+RUN pip3 install --no-cache-dir setuptools numpy transforms3d
+
+# Create workspace directory
 RUN mkdir -p /workspace/turtlebot3_ws/src
 
 WORKDIR /workspace/turtlebot3_ws
