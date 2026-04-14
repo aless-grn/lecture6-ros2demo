@@ -99,7 +99,6 @@ ros2 run student_robotics circle_motion
 ```
 
 Here is a screenshot of my package structure :
-
 	![](images/package.png)
 
 A screencast of the robot moving in circles in Gazebo can be found at : videos/robot_circles.webm
@@ -185,7 +184,6 @@ A screencast of the 'circle_motion' node running can be found at : videos/circle
 A screencast of the 'odom_monitor' node running can be found at : videos/odom_monitor_running.webm
 
 Here is a screenshot of 'ros2 node list' showing both nodes :
-
     ![](images/node_list.png)
 
 Pub-sub decoupling means that publishers and subscribers do not need to know about eachother directly, they only communicate through topics. A publisher simply sends messages to a topic, and any number of subscribers can receive them independently. This makes the system more flexible, since nodes can be added, removed or changed without affecting others.
@@ -194,7 +192,6 @@ Pub-sub decoupling means that publishers and subscribers do not need to know abo
 **Aufgabe 2: ROS2 Topic Inspection & Message Frequency Analysis
 
 (a) Here are all the screenshots of the outputs of the commands :
-
     ![](images/topic_list.png)
     ![](images/topic_info_cmd_vel.png)
     ![](images/topic_info_odom.png)
@@ -212,7 +209,6 @@ The publisher is the 'circle_motion' node, which sends velocity commands. The su
 'ros2 topic bw' measures how much data is being transmitted on the topic (bytes per second).
 
 (b) Here is the screenshot showing my nodes and TurtleBot3 nodes connected via topics :
-
     ![](images/rqt_graph.png)
 
 The graph shows the communication between ROS2 nodes using topics in a publisher-subscriber architecture. The 'circle_motion' node publishes velocity commands on '/cmd_vel', which are received by the TurtleBot3 controller 'turtlebot3_diff_drive', and this node publishes odometry data on '/odom' that is subscribed by 'odom_monitor'.
