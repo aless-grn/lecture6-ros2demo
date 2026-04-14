@@ -4,6 +4,216 @@
 https://github.com/user-attachments/assets/8124b78b-d82c-4339-b1e3-97d4fc210e88
 
 
+-----
+
+## Exercise Submission
+
+Link to my forked GitHub repository : https://github.com/aless-grn/lecture6-ros2demo
+
+Name : Alessandra Gorini
+Student ID : 19828417
+ROS2 version used : humble
+
+**Aufgabe 1: Create ROS2 Package & Publisher-Subscriber Nodes
+(a) I created the package 'student_robotics':
+```bash
+cd /workspace/turtlebot3_ws/src
+ros2 pkg create --build-type ament_python student_robotics
+```
+I added the dependencies by editing the file 'student_robotics/package.xml'. I added the following to the file:
+```xml
+<depend>rclpy</depend>
+<depend>geometry_msgs</depend>
+<depend>nav_msgs</depend>
+```
+I created the node 'circle_motion.py':
+```bash
+cd student_robotics/student_robotics
+code circle_motion.py
+```
+I added the following code to the file (done like in the example 'velocity_publisher.py' in the README):
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+
+class VelocityPublisher(Node):
+    def __init__(self):
+        super().__init__('velocity_publisher')
+        
+        # Create publisher: message type, topic name, queue size
+        self.publisher = self.create_publisher(
+            Twist,           # Message type
+            '/cmd_vel',      # Topic name
+            10               # Queue size
+        )
+        
+        # Create timer: publish every 0.5 seconds
+        self.timer = self.create_timer(0.5, self.publish_velocity)
+        
+        self.get_logger().info('Velocity Publisher started! Publishing to /cmd_vel')
+    
+    def publish_velocity(self):
+        msg = Twist()
+        msg.linear.x = 0.2   # Move forward at 0.2 m/s
+        msg.angular.z = 0.5  # Turn left at 0.5 rad/s
+        
+        self.publisher.publish(msg)
+        self.get_logger().info(
+            f'Publishing: linear.x={msg.linear.x}, angular.z={msg.angular.z}'
+        )
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = VelocityPublisher()
+    rclpy.spin(node)  # Keep node running
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+```
+I edit the file 'student_robotics/setup.py' and changed the 'entry_points' to contain the following:
+```python
+'console_scripts': [
+    'circle_motion = student_robotics.circle_motion:main',
+],
+```
+I build and source the workspace:
+```bash
+cd /workspace/turtlebot3_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+In Terminal 1, I start the simulation:
+```bash
+tb3_empty
+```
+In Terminal 2, I run the node:
+```bash
+ros2 run student_robotics circle_motion
+```
+
+Here is a screenshot of my package structure :
+	![](images/package.png)
+
+Here is a screencast of the robot moving in circles in Gazebo :
+    ![](videos/robot_circles.webm)
+
+'create_timer()' is used to execute a function periodically at a fixed frequency, which is essential for continuously publishing commands in ROS2. It allows the node to send messages at regular intervals without blocking the rest of the system.
+
+(b) I created the node 'odom_monitor.py':
+```bash
+cd student_robotics/student_robotics
+code odom_monitor.py
+```
+I added the following code to the file (done like in the example 'odometry_subscriber.py' in the README):
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from nav_msgs.msg import Odometry
+
+class OdomMonitor(Node):
+    def __init__(self):
+        super().__init__('odom_monitor')
+        
+        # Create subscriber: message type, topic name, callback function, queue size
+        self.subscription = self.create_subscription(
+            Odometry,               # Message type
+            '/odom',                # Topic name
+            self.odom_callback,     # Callback function
+            10                      # Queue size
+        )
+        
+        self.get_logger().info('Odom Monitor started! Listening to /odom')
+    
+    def odom_callback(self, msg):
+        # Extract position
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        
+        # Extract linear velocity
+        linear_x = msg.twist.twist.linear.x
+        angular_z = msg.twist.twist.angular.z
+        
+        self.get_logger().info(
+            f'Position: x={x:.2f}, y={y:.2f} | Velocity: linear.x={linear_x:.2f}, angular.z={angular_z:.2f}'
+        )
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = OdomMonitor()
+    rclpy.spin(node)
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+```
+I edit the file 'student_robotics/setup.py' and changed the 'entry_points' to contain the following:
+```python
+'console_scripts': [
+    'circle_motion = student_robotics.circle_motion:main',
+    'odom_monitor = student_robotics.odom_monitor:main',
+],
+```
+I build and source the workspace:
+```bash
+cd /workspace/turtlebot3_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+In Terminal 1, I start the simulation:
+```bash
+tb3_empty
+```
+In Terminal 2, I run the first node:
+```bash
+ros2 run student_robotics circle_motion
+```
+In Terminal 3, I run the second node:
+```bash
+ros2 run student_robotics odom_monitor
+```
+
+Here are screencasts of both nodes running :
+    ![](videos/circle_motion_running.webm)
+    ![](videos/odom_monitor_running.webm)
+
+Here is a screenshot of 'ros2 node list' showing both nodes :
+    ![](images/node_list.png)
+
+Pub-sub decoupling means that publishers and subscribers do not need to know about eachother directly, they only communicate through topics. A publisher simply sends messages to a topic, and any number of subscribers can receive them independently. This makes the system more flexible, since nodes can be added, removed or changed without affecting others.
+
+**Aufgabe 2: ROS2 Topic Inspection & Message Frequency Analysis
+(a) Here are all the screenshots of the outputs of the commands :
+    ![](images/topic_list.png)
+    ![](images/topic_info_cmd_vel.png)
+    ![](images/topic_info_odom.png)
+    ![](images/topic_hz_odom.png)
+    ![](images/topic_bw_odom.png)
+    ![](images/node_list2.png)
+    ![](images/node_info_circle_motion.png)
+
+The '/odom' frequency is the rate at which odometry messages are published.It matters because higher update rates provide more accurate feedback for controlling the robot. If the frequency is too low, the robot may behave inaccurately due to outdated information.
+
+As shown in the 'topic_info_cmd_vel.png' image, the '/cmd_vel' topic has 1 publisher and 1 subscriber.
+The publisher is the 'circle_motion' node, which sends velocity commands. The subscriber is the TurtleBot3 simulation, which receives these commands to move the robot.
+
+'ros2 topic hz' measures how frequently messages are published on a topic (messages per second).
+'ros2 topic bw' measures how much data is being transmitted on the topic (bytes per second).
+
+(b) Here is the screenshot showing my nodes and TurtleBot3 nodes connected via topics :
+    ![](images/rqt_graph.png)
+
+The graph shows the communication between ROS2 nodes using topics in a publisher-subscriber architecture. The 'circle_motion' node publishes velocity commands on '/cmd_vel', which are received by the TurtleBot3 controller 'turtlebot3_diff_drive', and this node publishes odometry data on '/odom' that is subscribed by 'odom_monitor'.
+The nodes are not connected directly to eachother but communicate through topics, wich makes the system more flexible and easy to modify.
+
+When I stop the 'circle_motion' node, the robot keeps moving because I think the last '/cmd_vel' command is still being used. The 'odom_monitor' node still works because it only listens to '/odom', so it can continue to report the robot's position and velocity.
+
+-----
+
+
 > DevOps for Cyber-Physical Systems | University of Bern
 
 Complete ROS2 Humble development environment with TurtleBot3 Burger simulation in Gazebo Classic, packaged as a VS Code Dev Container for cross-platform robotics development.
